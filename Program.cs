@@ -31,17 +31,22 @@ namespace CompsLab
                 var end = Console.ReadLine();
                 var End = int.Parse(end);
 
-                SetValues(incidentList, Start, 0, End);
+                List<int> wave = new List<int>();
+                wave.Add(Start);
+                SetValues(incidentList, Start, End, wave);
+
                 var finalValue = incidentList[End - 1].Value;
-                Console.WriteLine("\t***Values were set on nodes***");
 
                 var flag = true;
                 List<string> resultPaths = new List<string>();
+
                 while (flag == true)
                 {
                     List<int> path = new List<int>();
 
                     FindPath(incidentList, path, End, Start, finalValue, End);
+                    
+
                     if(incidentList[End - 1].IsGone == true)
                     {
                         break;
@@ -52,7 +57,7 @@ namespace CompsLab
                         s += i.ToString();
                         s += " ";
                     }
-                    Console.WriteLine("\t***The path found*** " + s);
+                    Console.WriteLine(" The path found: " + s);
                     incidentList[End - 1].Done = false;
                     resultPaths.Add(s);
                     File.WriteAllLines("output.txt", resultPaths);
@@ -63,8 +68,6 @@ namespace CompsLab
             {
                 Console.WriteLine("The file does not exist");
             }
-
-            Console.WriteLine("All paths were found");
             Console.ReadKey();
         }
 
@@ -77,9 +80,9 @@ namespace CompsLab
                 var forFlag = 0;
                 for(var i = 0; i < connectionsQuantity; i++)
                 {
-                    if(list[list[currentNode - 1].Connections[i] - 1].Value == valueCounter - 1 && list[list[currentNode - 1].Connections[i] - 1].IsGone == false)
+                    if(list[list[currentNode - 1].Connections[i] - 1].Value < valueCounter && list[list[currentNode - 1].Connections[i] - 1].IsGone == false)
                     {
-                        FindPath(list, res, list[currentNode - 1].Connections[i], start, valueCounter - 1, end);
+                        FindPath(list, res, list[currentNode - 1].Connections[i], start, list[list[currentNode - 1].Connections[i] - 1].Value, end);
                     }
                     if (list[end - 1].Done == true)
                     {
@@ -116,46 +119,78 @@ namespace CompsLab
                 }
             }
         }
-        static bool CheckOutConnections(List<Element> list, int currentNode, int quantity)
+
+        static bool CheckWaves(int connections, List<Element> list, int node)
         {
-            var q = 0;
-            for(var i = 0; i < quantity; i++)
+            for(var i = 0; i < connections; i++)
             {
-                if (list[list[currentNode - 1].Connections[i] - 1].Value == -1)
-                    q++;
+                if(list[list[node - 1].Connections[i] - 1].Value == -1)
+                {
+                    return true;
+                }
             }
-            if (q > 0)
-                return true;
-            else return false;
+            return false;
         }
 
-        static void SetValues(List<Element> list, int currentNode, int valueCounter, int end)
+        static void SetValues(List<Element> list, int currentNode, int end, List<int> waveList)
         {
-            while (currentNode != end)
+            var counter = 0;
+            while(counter < waveList.Count)
             {
-                var connectionsQuantity = list[currentNode - 1].Connections.Count;
-                var checkConnections = CheckOutConnections(list, currentNode, connectionsQuantity);
-                if (checkConnections == false)
-                    break;
-                list[currentNode - 1].Value = valueCounter;
-                valueCounter++;
-                for (var i = 0; i < connectionsQuantity; i++)
+                currentNode = waveList[counter];
+                if (currentNode == end)
                 {
-                    if(list[list[currentNode - 1].Connections[i] - 1].Value == -1)
+                    var flag = CheckWaves(list[currentNode - 1].Connections.Count, list, currentNode);
+                    SetMaxValue(list[currentNode - 1].Connections.Count, list, currentNode);
+                    if (flag == false)
                     {
-                        list[list[currentNode - 1].Connections[i] - 1].Value = valueCounter;
+                        break;
+                    }
+
+                }
+                else
+                {
+                    if (list[currentNode - 1].Value == -1 || IfEndIsClose(list, currentNode, end))
+                    {
+                        SetMaxValue(list[currentNode - 1].Connections.Count, list, currentNode);
+                        for(var i = 0; i < list[currentNode - 1].Connections.Count; i++)
+                        {
+                            if (list[list[currentNode - 1].Connections[i] - 1].Value == -1 || list[currentNode - 1].Connections[i] == end)
+                            {
+                                waveList.Add(list[currentNode - 1].Connections[i]);
+                            }
+                        }
                     }
                 }
-                for (var j = 0; j < connectionsQuantity; j++)
+                counter++;
+            }
+
+        }
+
+        static bool IfEndIsClose(List<Element> list, int currentNode, int end)
+        {
+            for(var i = 0; i < list[currentNode - 1].Connections.Count; i++)
+            {
+                if(list[list[currentNode - 1].Connections[i] - 1].Value == end)
                 {
-                    if(list[list[currentNode - 1].Connections[j] - 1].Value == valueCounter)
-                    {
-                        SetValues(list, list[currentNode - 1].Connections[j], valueCounter, end);
-                    }
+                    return true;
                 }
             }
-        } 
+            return false;
+        }
 
+        static void SetMaxValue(int connections, List<Element> list, int currentNode)
+        {
+            for(var i = 0; i < connections; i++)
+            {
+                if(list[list[currentNode - 1].Connections[i] - 1].Value >= list[currentNode - 1].Value)
+                {
+                    list[currentNode - 1].Value = list[list[currentNode - 1].Connections[i] - 1].Value + 1;
+                }
+            }
+        }
+            
+       
         static int[] SplitText(string text)
         {
             List<int> numbers = new List<int>();
